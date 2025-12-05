@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Jumper - Boosts & Legendary Skins!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #B0E0E6 100%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            right: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .score-panel, .height-panel, .jump-panel, .money-panel, .boost-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .score-panel {
+            font-size: 20px;
+            color: #4a5568;
+        }
+
+        .height-panel {
+            font-size: 20px;
+            color: #667eea;
+        }
+
+        .jump-panel {
+            font-size: 18px;
+            color: #48bb78;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .money-panel {
+            font-size: 20px;
+            color: #f6ad55;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .boost-panel {
+            font-size: 18px;
+            color: #9f7aea;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .money-icon {
+            width: 20px;
+            height: 20px;
+            background: gold;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+
+        .money-icon::after {
+            content: "$";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b4513;
+            font-weight: bold;
+        }
+
+        .boost-icon {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+        }
+
+        .boost-icon::after {
+            content: "↑";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+        }
+
+        .jump-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #48bb78;
+            transition: all 0.3s;
+        }
+
+        .jump-indicator.used {
+            background: #cbd5e0;
+            transform: scale(0.8);
+        }
+
+        .game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 20;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            animation: bounceIn 0.5s ease-out;
+            max-width: 400px;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .game-over-content h2 {
+            color: #e53e3e;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .final-stats {
+            margin: 20px 0;
+            font-size: 20px;
+            color: #4a5568;
+        }
+
+        .final-stats p {
+            margin: 10px 0;
+        }
+
+        .money-earned {
+            color: #f6ad55;
+            font-weight: bold;
+            font-size: 24px;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(246, 173, 85, 0.1);
+            border-radius: 10px;
+        }
+
+        .game-over-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .play-again-btn, .shop-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            border: none;
+        }
+
+        .play-again-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .shop-btn {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+        }
+
+        .play-again-btn:hover, .shop-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 30;
+        }
+
+        .start-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .start-content h1 {
+            color: #667eea;
+            font-size: 42px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions {
+            color: #4a5568;
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .boost-feature {
+            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+            animation: glow 2s infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 10px rgba(159, 122, 234, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(159, 122, 234, 0.8);
+            }
+        }
+
+        .start-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .start-btn, .menu-shop-btn {
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-weight: bold;
+            border: none;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .menu-shop-btn {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+        }
+
+        .start-btn:hover, .menu-shop-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            color: #4a5568;
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.9;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .shop-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 40;
+        }
+
+        .shop-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90%;
+            overflow-y: auto;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 15px;
+        }
+
+        .shop-title {
+            font-size: 32px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .shop-money {
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            color: #f6ad55;
+            font-weight: bold;
+        }
+
+        .close-shop {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .close-shop:hover {
+            transform: rotate(90deg);
+        }
+
+        .skins-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .skin-card {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .skin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .skin-preview {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+
+        .skin-model {
+            width: 40px;
+            height: 40px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .skin-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+
+        .skin-price {
+            font-size: 20px;
+            color: #f6ad55;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .skin-owned {
+            background: #48bb78;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .skin-selected {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .buy-btn, .select-btn {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.3s, box-shadow 0.3s;
+            width: 100%;
+        }
+
+        .select-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .buy-btn:hover, .select-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .buy-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .shop-tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .shop-tab {
+            padding: 10px 20px;
+            margin: 0 5px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 20px 20px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .shop-tab.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .price-tag {
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+
+        .legendary-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: linear-gradient(135deg, #f6e05e 0%, #d69e2e 100%);
+            color: #744210;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .boost-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 15;
+            animation: boostNotification 2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes boostNotification {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -80%) scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        
+        <div class="game-ui">
+            <div class="score-panel">
+                Score: <span id="score">0</span>
+            </div>
+            <div class="jump-panel">
+                Double Jumps: 
+                <span class="jump-indicator" id="jump1"></span>
+                <span class="jump-indicator" id="jump2"></span>
+            </div>
+            <div class="height-panel">
+                Height: <span id="height">0</span>m
+            </div>
+            <div class="boost-panel">
+                <span class="boost-icon"></span>
+                <span id="boostCount">0</span>
+            </div>
+            <div class="money-panel">
+                <span class="money-icon"></span>
+                <span id="money">0</span>
+            </div>
+        </div>
+
+        <div class="controls-hint">
+            ← → Move | SPACE Jump (Tap twice for Double Jump!) | Purple blocks = BOOST!
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <div class="start-content">
+                <h1>🚀 Tower Jumper</h1>
+                <div class="boost-feature">
+                    ⚡ NEW: Boost Blocks & Legendary Skins! ⚡
+                </div>
+                <div class="instructions">
+                    <p>Jump on moving blocks to climb higher!</p>
+                    <p>🎮 Use arrow keys to move</p>
+                    <p>🚀 Press SPACE to jump</p>
+                    <p>⚡ Tap SPACE twice for double jump!</p>
+                    <p>🔮 Land on purple boost blocks every 20 blocks!</p>
+                    <p>💰 Earn money and unlock legendary skins!</p>
+                </div>
+                <div class="start-buttons">
+                    <button class="start-btn" onclick="startGame()">Start Game</button>
+                    <button class="menu-shop-btn" onclick="openShop()">Shop</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-over-screen" id="gameOverScreen">
+            <div class="game-over-content">
+                <h2>Game Over!</h2>
+                <div class="final-stats">
+                    <p>Final Score: <span id="finalScore">0</span></p>
+                    <p>Max Height: <span id="finalHeight">0</span>m</p>
+                    <p>Blocks Landed: <span id="blocksLanded">0</span></p>
+                    <p>Double Jumps Used: <span id="doubleJumpsUsed">0</span></p>
+                    <p>Boosts Used: <span id="boostsUsed">0</span></p>
+                    <div class="money-earned">
+                        Money Earned: <span id="moneyEarned">0</span>
+                    </div>
+                </div>
+                <div class="game-over-buttons">
+                    <button class="play-again-btn" onclick="resetGame()">Play Again</button>
+                    <button class="shop-btn" onclick="openShop()">Shop</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="shop-screen" id="shopScreen">
+            <div class="shop-content">
+                <div class="shop-header">
+                    <h2 class="shop-title">Premium Character Shop</h2>
+                    <div class="shop-money">
+                        <span class="money-icon"></span>
+                        <span id="shopMoney">0</span>
+                    </div>
+                    <button class="close-shop" onclick="closeShop()">×</button>
+                </div>
+                
+                <div class="shop-tabs">
+                    <button class="shop-tab active" onclick="showSkinTab(0)">Premium ($60)</button>
+                    <button class="shop-tab" onclick="showSkinTab(1)">Deluxe ($180)</button>
+                    <button class="shop-tab" onclick="showSkinTab(2)">Elite ($300)</button>
+                    <button class="shop-tab" onclick="showSkinTab(3)">Legendary ($600)</button>
+                </div>
+
+                <div class="skins-grid" id="skinsGrid">
+                    <!-- Skins will be dynamically generated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game variables
+        let gameRunning = false;
+        let camera = { y: 0 };
+        let score = 0;
+        let maxHeight = 0;
+        let blocksLandedCount = 0;
+        let doubleJumpsUsed = 0;
+        let boostsUsed = 0;
+        let money = parseInt(localStorage.getItem('towerJumperMoney') || '0');
+        let selectedSkin = localStorage.getItem('towerJumperSelectedSkin') || '0';
+
+        // Player object
+        const player = {
+            x: canvas.width / 2 - 20,
+            y: canvas.height - 150,
+            width: 40,
+            height: 40,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 5,
+            jumpPower: -15,
+            doubleJumpPower: -13,
+            onGround: false,
+            jumpsRemaining: 2,
+            maxJumps: 2,
+            color: '#ff6b6b',
+            trail: [],
+            doubleJumpEffect: [],
+            boostEffect: []
+        };
+
+        // Physics constants
+        const gravity = 0.5;
+        const friction = 0.8;
+
+        // Blocks array
+        let blocks = [];
+        const blockColors = ['#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dfe6e9', '#a29bfe'];
+
+        // Skins data - TRIPLED PRICES
+        const skins = [
+            // Premium skins ($60 each)
+            { id: '0', name: 'Classic Red', color: '#ff6b6b', price: 60, owned: true, tab: 0 },
+            { id: '1', name: 'Ocean Blue', color: '#4dabf7', price: 60, owned: false, tab: 0 },
+            { id: '2', name: 'Forest Green', color: '#51cf66', price: 60, owned: false, tab: 0 },
+            
+            // Deluxe skins ($180 each)
+            { id: '3', name: 'Royal Purple', color: '#9775fa', price: 180, owned: false, tab: 1 },
+            { id: '4', name: 'Sunset Orange', color: '#ff922b', price: 180, owned: false, tab: 1 },
+            { id: '5', name: 'Arctic Teal', color: '#22b8cf', price: 180, owned: false, tab: 1 },
+            
+            // Elite skins ($300 each)
+            { id: '6', name: 'Galaxy', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', price: 300, owned: false, tab: 2 },
+            { id: '7', name: 'Golden', color: '#ffd43b', price: 300, owned: false, tab: 2 },
+            { id: '8', name: 'Shadow', color: '#343a40', price: 300, owned: false, tab: 2 },
+            
+            // Legendary skins ($600 each) - NEW
+            { id: '9', name: 'Cosmic', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)', price: 600, owned: false, tab: 3 },
+            { id: '10', name: 'Dragon', color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', price: 600, owned: false, tab: 3 },
+            { id: '11', name: 'Phoenix', color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', price: 600, owned: false, tab: 3 },
+            { id: '12', name: 'Neon', color: 'linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%)', price: 600, owned: false, tab: 3 },
+            { id: '13', name: 'Crystal', color: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)', price: 600, owned: false, tab: 3 },
+            { id: '14', name: 'Rainbow', color: 'linear-gradient(135deg, #ff0844 0%, #ffb199 50%, #ffeb3b 100%)', price: 600, owned: false, tab: 3 },
+            { id: '15', name: 'Electric', color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', price: 600, owned: false, tab: 3 },
+            { id: '16', name: 'Magma', color: 'linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%)', price: 600, owned: false, tab: 3 },
+            { id: '17', name: 'Arctic', color: 'linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)', price: 600, owned: false, tab: 3 }
+        ];
+
+        // Load owned skins from localStorage
+        function loadOwnedSkins() {
+            const ownedSkinsData = localStorage.getItem('towerJumperOwnedSkins');
+            if (ownedSkinsData) {
+                const ownedSkins = JSON.parse(ownedSkinsData);
+                skins.forEach(skin => {
+                    skin.owned = ownedSkins.includes(skin.id);
+                });
+            }
+        }
+
+        // Save owned skins to localStorage
+        function saveOwnedSkins() {
+            const ownedSkins = skins.filter(skin => skin.owned).map(skin => skin.id);
+            localStorage.setItem('towerJumperOwnedSkins', JSON.stringify(ownedSkins));
+        }
+
+        // Save money to localStorage
+        function saveMoney() {
+            localStorage.setItem('towerJumperMoney', money.toString());
+        }
+
+        // Update money display
+        function updateMoneyDisplay() {
+            document.getElementById('money').textContent = money;
+            document.getElementById('shopMoney').textContent = money;
+        }
+
+        // Apply selected skin
+        function applySelectedSkin() {
+            const skin = skins.find(s => s.id === selectedSkin);
+            if (skin) {
+                player.color = skin.color;
+            }
+        }
+
+        // Input handling
+        const keys = {};
+        let spacePressed = false;
+        let lastSpaceTime = 0;
+        const doubleJumpTimeWindow = 300; // milliseconds
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // Handle space bar for jumping
+            if (e.key === ' ' && !spacePressed) {
+                e.preventDefault();
+                spacePressed = true;
+                handleJump();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+            if (e.key === ' ') {
+                spacePressed = false;
+            }
+        });
+
+        // Handle jump logic with double jump
+        function handleJump() {
+            const currentTime = Date.now();
+            
+            if (player.onGround) {
+                // Ground jump - reset jumps
+                player.velocityY = player.jumpPower;
+                player.onGround = false;
+                player.jumpsRemaining = player.maxJumps - 1;
+                updateJumpIndicators();
+                createJumpEffect(player.x + player.width / 2, player.y + player.height, player.color);
+            } else if (player.jumpsRemaining > 0) {
+                // Air jump (double jump)
+                player.velocityY = player.doubleJumpPower;
+                player.jumpsRemaining--;
+                doubleJumpsUsed++;
+                updateJumpIndicators();
+                createDoubleJumpEffect(player.x + player.width / 2, player.y + player.height);
+            }
+        }
+
+        // Update jump indicators
+        function updateJumpIndicators() {
+            const jump1 = document.getElementById('jump1');
+            const jump2 = document.getElementById('jump2');
+            
+            if (player.onGround) {
+                jump1.classList.remove('used');
+                jump2.classList.remove('used');
+            } else {
+                if (player.jumpsRemaining >= 1) {
+                    jump1.classList.remove('used');
+                } else {
+                    jump1.classList.add('used');
+                }
+                
+                if (player.jumpsRemaining >= 2) {
+                    jump2.classList.remove('used');
+                } else {
+                    jump2.classList.add('used');
+                }
+            }
+        }
+
+        // Create jump effect
+        function createJumpEffect(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                player.doubleJumpEffect.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: Math.random() * -2,
+                    size: Math.random() * 4 + 2,
+                    color: color,
+                    life: 1
+                });
+            }
+        }
+
+        // Create double jump effect
+        function createDoubleJumpEffect(x, y) {
+            // Create green particles for double jump
+            for (let i = 0; i < 12; i++) {
+                const angle = (Math.PI * 2 * i) / 12;
+                player.doubleJumpEffect.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * 5,
+                    vy: Math.sin(angle) * 5 - 2,
+                    size: Math.random() * 6 + 3,
+                    color: '#48bb78',
+                    life: 1
+                });
+            }
+        }
+
+        // Create boost effect
+        function createBoostEffect(x, y) {
+            // Create purple particles for boost
+            for (let i = 0; i < 20; i++) {
+                const angle = (Math.PI * 2 * i) / 20;
+                player.boostEffect.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * 7,
+                    vy: Math.sin(angle) * 7 - 3,
+                    size: Math.random() * 8 + 4,
+                    color: '#9f7aea',
+                    life: 1
+                });
+            }
+            
+            // Show boost notification
+            showBoostNotification();
+        }
+
+        // Show boost notification
+        function showBoostNotification() {
+            const notification = document.createElement('div');
+            notification.className = 'boost-notification';
+            notification.textContent = 'BOOST!';
+            document.querySelector('.game-container').appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 2000);
+        }
+
+        // Update particles
+        function updateParticles() {
+            player.doubleJumpEffect = player.doubleJumpEffect.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+                p.size *= 0.98;
+                return p.life > 0;
+            });
+            
+            player.boostEffect = player.boostEffect.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.life -= 0.02;
+                p.size *= 0.98;
+                return p.life > 0;
+            });
+        }
+
+        // Draw particles
+        function drawParticles() {
+            player.doubleJumpEffect.forEach(p => {
+                ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+                ctx.fillRect(p.x - p.size / 2, p.y - camera.y - p.size / 2, p.size, p.size);
+            });
+            
+            player.boostEffect.forEach(p => {
+                ctx.fillStyle = p.color + Math.floor(p.life * 255).toString(16).padStart(2, '0');
+                ctx.fillRect(p.x - p.size / 2, p.y - camera.y - p.size / 2, p.size, p.size);
+            });
+        }
+
+        // Block class
+        class Block {
+            constructor(x, y, width, height, speed, direction, isBoost = false) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.speed = speed;
+                this.direction = direction;
+                this.color = isBoost ? '#9f7aea' : blockColors[Math.floor(Math.random() * blockColors.length)];
+                this.landed = false;
+                this.particles = [];
+                this.isBoost = isBoost;
+                this.pulse = 0;
+            }
+
+            update() {
+                this.x += this.speed * this.direction;
+                
+                // Bounce off walls
+                if (this.x <= 0 || this.x + this.width >= canvas.width) {
+                    this.direction *= -1;
+                }
+                
+                // Pulse effect for boost blocks
+                if (this.isBoost) {
+                    this.pulse += 0.1;
+                }
+
+                // Update particles
+                this.particles = this.particles.filter(p => {
+                    p.y += p.velocityY;
+                    p.x += p.velocityX;
+                    p.life -= 0.02;
+                    return p.life > 0;
+                });
+            }
+
+            draw() {
+                // Draw shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fillRect(this.x + 5, this.y - camera.y + 5, this.width, this.height);
+
+                // Draw block
+                if (this.isBoost) {
+                    // Special effect for boost blocks
+                    const gradient = ctx.createLinearGradient(this.x, this.y, this.x + this.width, this.y + this.height);
+                    gradient.addColorStop(0, '#9f7aea');
+                    gradient.addColorStop(1, '#805ad5');
+                    ctx.fillStyle = gradient;
+                    
+                    // Pulsing glow effect
+                    ctx.shadowColor = '#9f7aea';
+                    ctx.shadowBlur = 10 + Math.sin(this.pulse) * 5;
+                } else {
+                    ctx.fillStyle = this.color;
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fillRect(this.x, this.y - camera.y, this.width, this.height);
+                ctx.shadowBlur = 0;
+                
+                // Draw highlight
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(this.x, this.y - camera.y, this.width, 5);
+
+                // Draw particles
+                this.particles.forEach(p => {
+                    ctx.fillStyle = `rgba(255, 215, 0, ${p.life})`;
+                    ctx.fillRect(p.x, p.y - camera.y, p.size, p.size);
+                });
+                
+                // Draw boost icon on boost blocks
+                if (this.isBoost) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⚡', this.x + this.width / 2, this.y - camera.y + this.height / 2 + 7);
+                }
+            }
+
+            createParticles() {
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: this.x + this.width / 2,
+                        y: this.y,
+                        velocityX: (Math.random() - 0.5) * 4,
+                        velocityY: Math.random() * -3,
+                        size: Math.random() * 4 + 2,
+                        life: 1
+                    });
+                }
+            }
+        }
+
+        // Initialize blocks
+        function initBlocks() {
+            blocks = [];
+            // Starting platform
+            blocks.push(new Block(canvas.width / 2 - 60, canvas.height - 50, 120, 20, 0, 0, false));
+            
+            // Generate initial blocks
+            for (let i = 1; i < 20; i++) {
+                const y = canvas.height - 50 - (i * 80);
+                const width = Math.random() * 60 + 60;
+                const x = Math.random() * (canvas.width - width);
+                const speed = Math.random() * 2 + 0.5;
+                const direction = Math.random() > 0.5 ? 1 : -1;
+                blocks.push(new Block(x, y, width, 20, speed, direction, false));
+            }
+        }
+
+        // Generate new blocks as player climbs
+        function generateBlocks() {
+            const highestBlock = Math.min(...blocks.map(b => b.y));
+            const cameraTop = camera.y;
+            
+            if (highestBlock > cameraTop - 200) {
+                for (let i = 0; i < 5; i++) {
+                    const y = highestBlock - 80 - (i * 80);
+                    const width = Math.max(40, 80 - (maxHeight / 50)); // Blocks get smaller at higher levels
+                    const x = Math.random() * (canvas.width - width);
+                    const speed = Math.min(4, 1 + (maxHeight / 100)); // Blocks get faster at higher levels
+                    const direction = Math.random() > 0.5 ? 1 : -1;
+                    
+                    // Every 20th block is a boost block
+                    const isBoost = (blocksLandedCount > 0) && ((blocksLandedCount + 1) % 20 === 0);
+                    
+                    blocks.push(new Block(x, y, width, 20, speed, direction, isBoost));
+                }
+            }
+        }
+
+        // Clean up off-screen blocks
+        function cleanupBlocks() {
+            blocks = blocks.filter(block => block.y < camera.y + canvas.height + 100);
+        }
+
+        // Update player
+        function updatePlayer() {
+            // Store previous position for trail
+            player.trail.push({ x: player.x + player.width / 2, y: player.y + player.height / 2 });
+            if (player.trail.length > 10) {
+                player.trail.shift();
+            }
+
+            // Handle input
+            if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+                player.velocityX = -player.speed;
+            } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+                player.velocityX = player.speed;
+            } else {
+                player.velocityX *= friction;
+            }
+
+            // Apply physics
+            player.velocityY += gravity;
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Keep player in bounds
+            if (player.x < 0) {
+                player.x = 0;
+                player.velocityX = 0;
+            }
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+                player.velocityX = 0;
+            }
+
+            // Check collisions with blocks
+            let wasOnGround = player.onGround;
+            player.onGround = false;
+            blocks.forEach(block => {
+                if (player.x < block.x + block.width &&
+                    player.x + player.width > block.x &&
+                    player.y < block.y + block.height &&
+                    player.y + player.height > block.y) {
+                    
+                    // Landing on top of block
+                    if (player.velocityY > 0 && player.y < block.y) {
+                        player.y = block.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                        
+                        // Move with block
+                        player.x += block.speed * block.direction;
+                        
+                        // Reset jumps when landing
+                        if (!wasOnGround) {
+                            player.jumpsRemaining = player.maxJumps;
+                            updateJumpIndicators();
+                        }
+                        
+                        // Score and effects
+                        if (!block.landed) {
+                            block.landed = true;
+                            score += 10;
+                            blocksLandedCount++;
+                            block.createParticles();
+                            
+                            // Check if it's a boost block
+                            if (block.isBoost) {
+                                player.velocityY = -30; // Powerful boost
+                                boostsUsed++;
+                                createBoostEffect(player.x + player.width / 2, player.y + player.height);
+                                document.getElementById('boostCount').textContent = boostsUsed;
+                            }
+                            
+                            // Update score display
+                            document.getElementById('score').textContent = score;
+                        }
+                    }
+                }
+            });
+
+            // Update camera
+            const targetCameraY = player.y - canvas.height / 2;
+            camera.y += (targetCameraY - camera.y) * 0.1;
+
+            // Update height
+            const currentHeight = Math.max(0, Math.floor((canvas.height - player.y) / 10));
+            if (currentHeight > maxHeight) {
+                maxHeight = currentHeight;
+                document.getElementById('height').textContent = maxHeight;
+            }
+
+            // Check game over
+            if (player.y > camera.y + canvas.height + 100) {
+                gameOver();
+            }
+
+            // Update particles
+            updateParticles();
+        }
+
+        // Draw player
+        function drawPlayer() {
+            // Draw trail
+            player.trail.forEach((point, index) => {
+                ctx.fillStyle = `rgba(255, 107, 107, ${index / player.trail.length * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y - camera.y, (index / player.trail.length) * 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(player.x + 3, player.y - camera.y + 3, player.width, player.height);
+
+            // Draw player
+            if (player.color.includes('gradient')) {
+                // Handle gradient skins
+                const gradient = ctx.createLinearGradient(player.x, player.y, player.x + player.width, player.y + player.height);
+                
+                // Parse gradient string for special skins
+                if (player.color.includes('667eea') && player.color.includes('764ba2')) {
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+                } else if (player.color.includes('f093fb') && player.color.includes('f5576c')) {
+                    gradient.addColorStop(0, '#f093fb');
+                    gradient.addColorStop(1, '#f5576c');
+                } else if (player.color.includes('fa709a') && player.color.includes('fee140')) {
+                    gradient.addColorStop(0, '#fa709a');
+                    gradient.addColorStop(1, '#fee140');
+                } else if (player.color.includes('00d2ff') && player.color.includes('3a7bd5')) {
+                    gradient.addColorStop(0, '#00d2ff');
+                    gradient.addColorStop(1, '#3a7bd5');
+                } else if (player.color.includes('89f7fe') && player.color.includes('66a6ff')) {
+                    gradient.addColorStop(0, '#89f7fe');
+                    gradient.addColorStop(1, '#66a6ff');
+                } else if (player.color.includes('ff0844') && player.color.includes('ffb199')) {
+                    gradient.addColorStop(0, '#ff0844');
+                    gradient.addColorStop(0.5, '#ffb199');
+                    gradient.addColorStop(1, '#ffeb3b');
+                } else if (player.color.includes('4facfe') && player.color.includes('00f2fe')) {
+                    gradient.addColorStop(0, '#4facfe');
+                    gradient.addColorStop(1, '#00f2fe');
+                } else if (player.color.includes('ff9a56') && player.color.includes('ff6a88')) {
+                    gradient.addColorStop(0, '#ff9a56');
+                    gradient.addColorStop(1, '#ff6a88');
+                } else if (player.color.includes('e0c3fc') && player.color.includes('8ec5fc')) {
+                    gradient.addColorStop(0, '#e0c3fc');
+                    gradient.addColorStop(1, '#8ec5fc');
+                } else if (player.color.includes('667eea') && player.color.includes('f093fb')) {
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(0.5, '#764ba2');
+                    gradient.addColorStop(1, '#f093fb');
+                }
+                
+                ctx.fillStyle = gradient;
+            } else {
+                ctx.fillStyle = player.color;
+            }
+            ctx.fillRect(player.x, player.y - camera.y, player.width, player.height);
+            
+            // Draw eyes
+            ctx.fillStyle = 'white';
+            ctx.fillRect(player.x + 8, player.y - camera.y + 10, 8, 8);
+            ctx.fillRect(player.x + 24, player.y - camera.y + 10, 8, 8);
+            ctx.fillStyle = 'black';
+            ctx.fillRect(player.x + 10, player.y - camera.y + 12, 4, 4);
+            ctx.fillRect(player.x + 26, player.y - camera.y + 12, 4, 4);
+
+            // Draw smile
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(player.x + player.width / 2, player.y - camera.y + 25, 8, 0, Math.PI);
+            ctx.stroke();
+
+            // Draw double jump aura
+            if (!player.onGround && player.jumpsRemaining > 0) {
+                ctx.strokeStyle = 'rgba(72, 187, 120, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(player.x + player.width / 2, player.y + player.height / 2 - camera.y, 
+                       player.width / 2 + 5 + Math.sin(Date.now() * 0.01) * 3, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // Draw background
+        function drawBackground() {
+            // Sky gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.5, '#98D8E8');
+            gradient.addColorStop(1, '#B0E0E6');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            for (let i = 0; i < 5; i++) {
+                const y = (i * 150 - camera.y * 0.3) % (canvas.height + 100);
+                const x = 100 + i * 60;
+                ctx.beginPath();
+                ctx.arc(x, y, 30, 0, Math.PI * 2);
+                ctx.arc(x + 25, y, 35, 0, Math.PI * 2);
+                ctx.arc(x + 50, y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw everything
+            drawBackground();
+            
+            // Update and draw blocks
+            blocks.forEach(block => {
+                block.update();
+                block.draw();
+            });
+
+            // Update and draw player
+            updatePlayer();
+            drawPlayer();
+
+            // Draw particles
+            drawParticles();
+
+            // Generate new blocks
+            generateBlocks();
+            
+            // Clean up old blocks
+            cleanupBlocks();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Calculate money earned based on height (increased for balance)
+        function calculateMoneyEarned(height) {
+            // $3 per meter, with bonus for higher heights
+            const baseMoney = height * 3;
+            const bonus = Math.floor(height / 10) * 15; // $15 bonus for every 10m
+            return baseMoney + bonus;
+        }
+
+        // Start game
+        function startGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            gameRunning = true;
+            initBlocks();
+            updateJumpIndicators();
+            applySelectedSkin();
+            gameLoop();
+        }
+
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            const moneyEarned = calculateMoneyEarned(maxHeight);
+            money += moneyEarned;
+            saveMoney();
+            updateMoneyDisplay();
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalHeight').textContent = maxHeight;
+            document.getElementById('blocksLanded').textContent = blocksLandedCount;
+            document.getElementById('doubleJumpsUsed').textContent = doubleJumpsUsed;
+            document.getElementById('boostsUsed').textContent = boostsUsed;
+            document.getElementById('moneyEarned').textContent = moneyEarned;
+            document.getElementById('gameOverScreen').style.display = 'flex';
+        }
+
+        // Reset game
+        function resetGame() {
+            // Reset player
+            player.x = canvas.width / 2 - 20;
+            player.y = canvas.height - 150;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            player.onGround = false;
+            player.jumpsRemaining = player.maxJumps;
+            player.trail = [];
+            player.doubleJumpEffect = [];
+            player.boostEffect = [];
+
+            // Reset game variables
+            camera.y = 0;
+            score = 0;
+            maxHeight = 0;
+            blocksLandedCount = 0;
+            doubleJumpsUsed = 0;
+            boostsUsed = 0;
+
+            // Reset UI
+            document.getElementById('score').textContent = '0';
+            document.getElementById('height').textContent = '0';
+            document.getElementById('boostCount').textContent = '0';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            updateJumpIndicators();
+
+            // Restart game
+            gameRunning = true;
+            initBlocks();
+            gameLoop();
+        }
+
+        // Shop functions
+        function openShop() {
+            document.getElementById('shopScreen').style.display = 'flex';
+            updateMoneyDisplay();
+            renderSkins(0); // Show first tab by default
+        }
+
+        function closeShop() {
+            document.getElementById('shopScreen').style.display = 'none';
+        }
+
+        function showSkinTab(tabIndex) {
+            // Update active tab
+            const tabs = document.querySelectorAll('.shop-tab');
+            tabs.forEach((tab, index) => {
+                if (index === tabIndex) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+            
+            // Render skins for this tab
+            renderSkins(tabIndex);
+        }
+
+        function renderSkins(tabIndex) {
+            const skinsGrid = document.getElementById('skinsGrid');
+            skinsGrid.innerHTML = '';
+            
+            const tabSkins = skins.filter(skin => skin.tab === tabIndex);
+            
+            tabSkins.forEach(skin => {
+                const skinCard = document.createElement('div');
+                skinCard.className = 'skin-card';
+                
+                let statusHTML = '';
+                let buttonHTML = '';
+                let badgeHTML = '';
+                
+                // Add legendary badge for legendary skins
+                if (skin.tab === 3) {
+                    badgeHTML = '<div class="legendary-badge">LEGENDARY</div>';
+                }
+                
+                if (skin.owned) {
+                    if (skin.id === selectedSkin) {
+                        statusHTML = '<div class="skin-selected">SELECTED</div>';
+                        buttonHTML = '<button class="select-btn" disabled>Selected</button>';
+                    } else {
+                        statusHTML = '<div class="skin-owned">OWNED</div>';
+                        buttonHTML = `<button class="select-btn" onclick="selectSkin('${skin.id}')">Select</button>`;
+                    }
+                } else {
+                    statusHTML = `<div class="skin-price">$${skin.price}</div>`;
+                    const canAfford = money >= skin.price;
+                    buttonHTML = `<button class="buy-btn" onclick="buySkin('${skin.id}')" ${!canAfford ? 'disabled' : ''}>Buy</button>`;
+                }
+                
+                let skinPreviewStyle = '';
+                if (skin.color.includes('gradient')) {
+                    skinPreviewStyle = `background: ${skin.color.includes('667eea') && skin.color.includes('f093fb') ? 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)' : skin.color}`;
+                } else {
+                    skinPreviewStyle = `background: ${skin.color}`;
+                }
+                
+                skinCard.innerHTML = `
+                    ${badgeHTML}
+                    <div class="skin-preview">
+                        <div class="skin-model" style="${skinPreviewStyle}"></div>
+                    </div>
+                    <div class="skin-name">${skin.name}</div>
+                    ${statusHTML}
+                    ${buttonHTML}
+                `;
+                
+                skinsGrid.appendChild(skinCard);
+            });
+        }
+
+        function buySkin(skinId) {
+            const skin = skins.find(s => s.id === skinId);
+            if (skin && !skin.owned && money >= skin.price) {
+                money -= skin.price;
+                skin.owned = true;
+                saveMoney();
+                saveOwnedSkins();
+                updateMoneyDisplay();
+                renderSkins(skin.tab); // Re-render the current tab
+            }
+        }
+
+        function selectSkin(skinId) {
+            selectedSkin = skinId;
+            localStorage.setItem('towerJumperSelectedSkin', selectedSkin);
+            applySelectedSkin();
+            
+            // Re-render all tabs to update selected status
+            for (let i = 0; i < 4; i++) {
+                renderSkins(i);
+            }
+        }
+
+        // Initialize game
+        function init() {
+            loadOwnedSkins();
+            updateMoneyDisplay();
+            applySelectedSkin();
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
